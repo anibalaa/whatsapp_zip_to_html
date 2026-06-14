@@ -38,6 +38,12 @@ Abre Safari o Chrome en tu dispositivo y entra en chat-zip-viewer.netlify.app
 Pulsa el botón de subir archivo. Se abrirá el selector de archivos de iOS, navega hasta donde guardaste el ZIP y selecciónalo. El proceso puede tardar varios minutos en chats con muchas fotos o vídeos.
 Cuando termine, pulsa Descargar HTML. El archivo se guardará automáticamente en tu carpeta de Descargas. Para abrirlo, ve a la app Archivos → Descargas, toca el archivo y elige Abrir con Safari o Abrir con Chrome.
 
+Restricciones importantes:
+
+No almacenamos ningún dato. Todo es local en el dispositivo del usuario.
+El HTML generado puede pesar bastante si el chat tiene muchas fotos o vídeos. Es normal.
+Si el archivo ZIP es muy grande (más de 500MB), puede tardar varios minutos en procesarse desde móvil.
+Compatible con Chrome y Firefox en Android. En iOS puede haber limitaciones de memoria con chats muy pesados.
 
 Un par de notas:
 
