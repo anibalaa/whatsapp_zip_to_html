@@ -1,0 +1,292 @@
+
+<style>
+  .drop-zone {
+    border: 1.5px dashed var(--color-border-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    background: var(--color-background-secondary);
+  }
+  .drop-zone:hover, .drop-zone.drag-over { background: var(--color-background-tertiary); }
+  .drop-zone input { display: none; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 18px; border-radius: var(--border-radius-md);
+    font-size: 14px; cursor: pointer; border: 0.5px solid var(--color-border-secondary);
+    background: transparent; color: var(--color-text-primary);
+    transition: background 0.12s;
+  }
+  .btn:hover { background: var(--color-background-secondary); }
+  .btn.primary { background: var(--color-text-primary); color: var(--color-background-primary); border-color: var(--color-text-primary); }
+  .btn.primary:hover { opacity: 0.85; }
+  .progress-bar { height: 4px; border-radius: 2px; background: var(--color-border-tertiary); overflow: hidden; margin: 1rem 0; }
+  .progress-fill { height: 100%; background: var(--color-text-primary); transition: width 0.3s; width: 0%; }
+  .status { font-size: 13px; color: var(--color-text-secondary); margin: 0.5rem 0; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 1rem 0; }
+  .info-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem; }
+  .info-card .num { font-size: 20px; font-weight: 500; }
+  .info-card .lbl { font-size: 12px; color: var(--color-text-secondary); }
+</style>
+
+<h2 class="sr-only">Conversor de chat de WhatsApp (ZIP) a HTML</h2>
+
+<div id="app" style="padding: 1rem 0; max-width: 620px; margin: 0 auto;">
+
+  <div id="step-upload">
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <input type="file" id="file-input" accept=".zip">
+      <i class="ti ti-file-zip" style="font-size:36px; color:var(--color-text-secondary);" aria-hidden="true"></i>
+      <p style="margin:0.75rem 0 0.25rem; font-size:15px; font-weight:500;">Suelta el ZIP de WhatsApp aquí</p>
+      <p style="margin:0; font-size:13px; color:var(--color-text-secondary);">o haz clic para seleccionar el archivo</p>
+    </div>
+    <p style="font-size:12px; color:var(--color-text-tertiary); margin-top:0.75rem; text-align:center;">
+      <i class="ti ti-lock" style="font-size:13px; vertical-align:-1px;" aria-hidden="true"></i>
+      Todo se procesa localmente en tu navegador, nada se sube a ningún servidor
+    </p>
+  </div>
+
+  <div id="step-processing" style="display:none;">
+    <p class="status" id="status-msg">Leyendo ZIP...</p>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+  <div id="step-result" style="display:none;">
+    <div class="info-grid">
+      <div class="info-card"><div class="num" id="count-msgs">0</div><div class="lbl">mensajes</div></div>
+      <div class="info-card"><div class="num" id="count-media">0</div><div class="lbl">archivos media</div></div>
+      <div class="info-card"><div class="num" id="count-senders">0</div><div class="lbl">participantes</div></div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:1rem;">
+      <button class="btn primary" id="btn-download"><i class="ti ti-download" aria-hidden="true"></i> Descargar HTML</button>
+      <button class="btn" id="btn-reset"><i class="ti ti-refresh" aria-hidden="true"></i> Nuevo archivo</button>
+    </div>
+    <p style="font-size:12px; color:var(--color-text-secondary); margin-top:0.75rem;">
+      El archivo HTML incluye las imágenes, audios y vídeos embebidos en base64. Ábrelo con cualquier navegador.
+    </p>
+  </div>
+
+  <div id="step-error" style="display:none;">
+    <p style="color:var(--color-text-danger); font-size:14px;" id="error-msg"></p>
+    <button class="btn" id="btn-retry"><i class="ti ti-refresh" aria-hidden="true"></i> Reintentar</button>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+function show(id) {
+  ['step-upload','step-processing','step-result','step-error'].forEach(s => $(s).style.display = s===id?'':'none');
+}
+function setProgress(pct, msg) {
+  $('progress-fill').style.width = pct + '%';
+  if (msg) $('status-msg').textContent = msg;
+}
+
+$('file-input').addEventListener('change', e => handleFile(e.target.files[0]));
+const dz = $('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+$('btn-reset').addEventListener('click', () => { $('file-input').value=''; show('step-upload'); });
+$('btn-retry').addEventListener('click', () => { $('file-input').value=''; show('step-upload'); });
+$('btn-download').addEventListener('click', () => {
+  const blob = new Blob([window._generatedHTML], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'chat_whatsapp.html';
+  a.click();
+});
+
+async function handleFile(file) {
+  if (!file) return;
+  if (!file.name.endsWith('.zip')) { showError('El archivo debe ser un ZIP exportado desde WhatsApp.'); return; }
+  show('step-processing');
+  setProgress(5, 'Leyendo ZIP...');
+  try {
+    const zip = await JSZip.loadAsync(file);
+    setProgress(15, 'Buscando archivos...');
+    const txtFile = Object.values(zip.files).find(f => f.name.endsWith('.txt') && !f.dir);
+    if (!txtFile) throw new Error('No se encontró el archivo de texto del chat dentro del ZIP.');
+    const txtContent = await txtFile.async('string');
+    setProgress(30, 'Analizando mensajes...');
+    const msgs = parseChat(txtContent);
+    if (msgs.length === 0) throw new Error('No se pudieron extraer mensajes. ¿Es un ZIP de WhatsApp válido?');
+    setProgress(45, 'Cargando archivos multimedia...');
+    const mediaMap = {};
+    const mediaFiles = Object.values(zip.files).filter(f => !f.dir && !f.name.endsWith('.txt'));
+    let loaded = 0;
+    for (const mf of mediaFiles) {
+      const fname = mf.name.split('/').pop();
+      const data = await mf.async('base64');
+      const mime = guessMime(fname);
+      if (mime) mediaMap[fname] = { data, mime };
+      loaded++;
+      setProgress(45 + Math.round((loaded / (mediaFiles.length||1)) * 35), `Cargando media (${loaded}/${mediaFiles.length})...`);
+    }
+    setProgress(85, 'Generando HTML...');
+    const senders = [...new Set(msgs.filter(m=>m.sender).map(m=>m.sender))];
+    const html = buildHTML(msgs, mediaMap, senders, file.name);
+    window._generatedHTML = html;
+    setProgress(100, 'Listo');
+    $('count-msgs').textContent = msgs.filter(m=>m.sender).length;
+    $('count-media').textContent = Object.keys(mediaMap).length;
+    $('count-senders').textContent = senders.length;
+    show('step-result');
+  } catch(e) {
+    showError(e.message);
+  }
+}
+
+function showError(msg) { $('error-msg').textContent = msg; show('step-error'); }
+
+// ─── PARSER CORREGIDO ───────────────────────────────────────────────
+// Limpia caracteres invisibles Unicode (LRM U+200E, RLM U+200F, ZWNBSP U+FEFF, etc.)
+function stripInvisible(s) {
+  return s.replace(/[\u200E\u200F\uFEFF\u202A-\u202E\u2066-\u2069]/g, '');
+}
+
+function parseChat(txt) {
+  // Normaliza saltos de línea y limpia invisibles globales
+  const clean = stripInvisible(txt.replace(/\r\n/g, '\n').replace(/\r/g, '\n'));
+  const lines = clean.split('\n');
+  const msgs = [];
+
+  // Soporta formatos:
+  // [DD/MM/YY, HH:MM:SS] Sender: texto
+  // DD/MM/YY, HH:MM - Sender: texto
+  // DD/MM/YY, HH:MM - : texto  (sender vacío — caso del usuario)
+  const RE = /^[\["]?(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})[,\s]+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[aApP]\.?[mM]\.?)?)[\]"]?\s*[-–]\s*(.*?):\s([\s\S]*)$/;
+
+  let cur = null;
+  for (const line of lines) {
+    const m = RE.exec(line);
+    if (m) {
+      if (cur) msgs.push(cur);
+      const sender = m[3].trim() || '(sin nombre)';
+      cur = { date: m[1], time: m[2], sender, text: m[4] };
+    } else if (cur) {
+      cur.text += '\n' + line;
+    } else {
+      // línea de sistema sin remitente
+      msgs.push({ date:'', time:'', sender: null, text: line });
+    }
+  }
+  if (cur) msgs.push(cur);
+  return msgs;
+}
+// ────────────────────────────────────────────────────────────────────
+
+function guessMime(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  const map = {
+    jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp',
+    mp4:'video/mp4', mov:'video/quicktime', avi:'video/x-msvideo', '3gp':'video/3gpp',
+    mp3:'audio/mpeg', ogg:'audio/ogg', opus:'audio/ogg', m4a:'audio/mp4', aac:'audio/aac', wav:'audio/wav', weba:'audio/webm',
+    pdf:'application/pdf'
+  };
+  return map[ext] || null;
+}
+
+function colorFor(sender, senders) {
+  const palette = ['#1D9E75','#378ADD','#D85A30','#D4537E','#7F77DD','#BA7517','#639922','#0F6E56','#185FA5'];
+  return palette[senders.indexOf(sender) % palette.length];
+}
+
+// Detecta si el texto ES un nombre de archivo adjunto (línea entera = fichero)
+// WhatsApp pone una línea del tipo "IMG-xxx.jpg (archivo adjunto)" o solo el nombre
+const ATTACH_LINE_RE = /^([\w\-. ]+\.(jpg|jpeg|png|gif|webp|mp4|mov|avi|3gp|mp3|ogg|opus|m4a|aac|wav|weba|pdf))(?:\s*\(archivo adjunto\))?$/i;
+// También puede aparecer como texto embebido dentro de una línea más larga
+const ATTACH_INLINE_RE = /([\w\-. ]+\.(jpg|jpeg|png|gif|webp|mp4|mov|avi|3gp|mp3|ogg|opus|m4a|aac|wav|weba|pdf))/gi;
+
+function renderMedia(fname, mediaMap) {
+  // Busca en mediaMap ignorando mayúsculas/minúsculas
+  const key = Object.keys(mediaMap).find(k => k.toLowerCase() === fname.toLowerCase());
+  if (!key) return `<span style="font-style:italic;font-size:12px;color:#999;">[${escHtml(fname)}]</span>`;
+  const entry = mediaMap[key];
+  const src = `data:${entry.mime};base64,${entry.data}`;
+  if (entry.mime.startsWith('image/'))
+    return `<img src="${src}" style="max-width:260px;max-height:320px;border-radius:8px;display:block;margin-top:4px;">`;
+  if (entry.mime.startsWith('video/'))
+    return `<video src="${src}" controls style="max-width:280px;border-radius:8px;display:block;margin-top:4px;"></video>`;
+  if (entry.mime.startsWith('audio/'))
+    return `<audio src="${src}" controls style="display:block;margin-top:6px;width:260px;"></audio>`;
+  return `<a href="${src}" download="${escHtml(fname)}" style="font-size:13px;">📄 ${escHtml(fname)}</a>`;
+}
+
+function renderText(text, mediaMap) {
+  const lines = text.split('\n');
+  let html = '';
+  for (const line of lines) {
+    const stripped = line.trim();
+    if (!stripped) continue;
+    const am = ATTACH_LINE_RE.exec(stripped);
+    if (am) {
+      html += renderMedia(am[1], mediaMap);
+    } else {
+      // busca nombres de archivo dentro del texto normal
+      let processed = escHtml(stripped);
+      html += `<p style="margin:2px 0;white-space:pre-wrap;word-break:break-word;">${processed}</p>`;
+    }
+  }
+  return html || '';
+}
+
+function buildHTML(msgs, mediaMap, senders, origName) {
+  const bubbles = msgs.map(msg => {
+    if (!msg.sender) {
+      const t = msg.text.trim();
+      if (!t) return '';
+      return `<div style="text-align:center;font-size:12px;color:#888;margin:6px 0 8px;">${escHtml(t)}</div>`;
+    }
+    const isFirst = senders[0] === msg.sender;
+    const color = colorFor(msg.sender, senders);
+    const bg = isFirst ? '#DCF8C6' : '#fff';
+    const align = isFirst ? 'flex-end' : 'flex-start';
+    const content = renderText(msg.text, mediaMap);
+    if (!content) return '';
+    return `<div style="display:flex;justify-content:${align};margin-bottom:6px;">
+  <div style="max-width:75%;background:${bg};border-radius:10px;padding:8px 10px;box-shadow:0 1px 2px rgba(0,0,0,0.08);">
+    <p style="margin:0 0 3px;font-size:12px;font-weight:600;color:${color};">${escHtml(msg.sender)}</p>
+    ${content}
+    <p style="margin:3px 0 0;font-size:11px;color:#aaa;text-align:right;">${escHtml(msg.date)} ${escHtml(msg.time)}</p>
+  </div>
+</div>`;
+  }).join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chat — ${escHtml(origName)}</title>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;background:#e5ddd5;line-height:1.4;}
+#header{background:#075E54;color:#fff;padding:12px 16px;position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;}
+#header h1{margin:0;font-size:16px;font-weight:500;}
+#header small{font-size:12px;opacity:.75;display:block;}
+#chat{max-width:720px;margin:0 auto;padding:12px 10px 30px;}
+audio{max-width:100%;}
+</style>
+</head>
+<body>
+<div id="header">
+  <svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="18" fill="#25D366"/><path d="M18 8C12.48 8 8 12.48 8 18c0 1.8.47 3.49 1.29 4.96L8 28l5.18-1.27C14.6 27.54 16.26 28 18 28c5.52 0 10-4.48 10-10S23.52 8 18 8zm5.5 13.88c-.23.64-1.33 1.22-1.84 1.27-.47.05-.93.22-3.12-.65-2.63-1.05-4.32-3.73-4.45-3.9-.13-.17-1.08-1.44-1.08-2.75s.68-1.95.93-2.22c.23-.25.5-.31.67-.31.17 0 .33 0 .48.01.15.01.36-.06.57.43.21.5.72 1.77.78 1.9.06.13.1.28.02.45-.08.17-.12.27-.24.42-.12.15-.25.33-.36.44-.12.12-.24.25-.1.49.14.24.61 1 1.31 1.62.9.8 1.66 1.05 1.9 1.17.24.12.38.1.52-.06.14-.16.59-.69.75-.93.16-.24.32-.2.54-.12.22.08 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.57-.17 1.21z" fill="#fff"/></svg>
+  <div>
+    <h1>Chat exportado</h1>
+    <small>${escHtml(origName)} · ${senders.length} participante${senders.length!==1?'s':''} · ${msgs.filter(m=>m.sender).length} mensajes</small>
+  </div>
+</div>
+<div id="chat">${bubbles}</div>
+</body>
+</html>`;
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
