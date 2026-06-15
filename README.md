@@ -1,7 +1,7 @@
 # whatsapp_zip_to_html
 Pequeño script hecho con Claude para convertir un chat exportado de WhatsApp a un página Web con todos los archivos multimedia
 
-[https://anibalwp.com/]](https://anibalwp.com/)
+[https://anibalwp.com/](https://anibalwp.com/)
 
 Este proyecto es un conversor de chats de WhatsApp a HTML, diseñado para usuarios sin conocimientos técnicos que solo disponen de móvil o tablet.
 Qué hace:
