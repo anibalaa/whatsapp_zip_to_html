@@ -1,7 +1,7 @@
 # whatsapp_zip_to_html
 Pequeño script hecho con Claude para convertir un chat exportado de WhatsApp a un página Web con todos los archivos multimedia
 
-https://chat-zip-viewer.netlify.app/
+[https://anibalwp.com/]](https://anibalwp.com/)
 
 Este proyecto es un conversor de chats de WhatsApp a HTML, diseñado para usuarios sin conocimientos técnicos que solo disponen de móvil o tablet.
 Qué hace:
@@ -25,16 +25,16 @@ Cómo se usa:
 
 ANDROID
 
-Abre WhatsApp y entra en el chat que quieres guardar. Toca los tres puntos de arriba a la derecha → Más → Exportar chat → Con archivos multimedia. WhatsApp generará un archivo ZIP. Cuando te pregunte dónde guardarlo, elige Google Drive o Archivos del dispositivo. Tienes un tutorial de este proceso en [¿Cómo exportar un chat completo de WhatsApp en Android?](https://youtube.com/shorts/WGNFQdCPkIs)
-Luego, abre el navegador web en tu móvil o tablet y entra en [chat-zip-viewer.netlify.app](https://chat-zip-viewer.netlify.app/)
+Abre WhatsApp y entra en el chat que quieres guardar. Toca los tres puntos de arriba a la derecha → Más → Exportar chat → Con archivos multimedia. WhatsApp generará un archivo ZIP. Cuando te pregunte dónde guardarlo, elige Google Drive o Archivos del dispositivo.
+Cuando lo hayas exportado, pulsa en el botón "Si, ya lo tengo" y te abrirá la web del conversor.
 Pulsa el botón de subir archivo y busca el ZIP que acabas de exportar. El proceso puede tardar unos minutos dependiendo del tamaño del chat. No cierres el navegador mientras trabaja.
 Cuando termine, pulsa Descargar HTML. Se guardará en tu carpeta de Descargas. Para verlo, abre la app Archivos o el gestor de archivos de tu dispositivo, localiza el archivo y ábrelo con Chrome.
 
 
 iOS (iPhone / iPad)
 
-Abre WhatsApp y entra en el chat que quieres guardar. Toca el nombre del chat arriba → Exportar chat → Con archivos multimedia. WhatsApp te preguntará dónde guardarlo, elige Guardar en Archivos y selecciona iCloud Drive o En mi iPhone/iPad. Tienes un tutorial de este proceso en [¿Cómo exportar chats de WhatsApp en iPhone?](https://youtube.com/shorts/K6VLDWKCcC4)
-Luego, abre Safari o Chrome en tu dispositivo y entra en [chat-zip-viewer.netlify.app](https://chat-zip-viewer.netlify.app/)
+Abre WhatsApp y entra en el chat que quieres guardar. Toca el nombre del chat arriba → Exportar chat → Con archivos multimedia. WhatsApp te preguntará dónde guardarlo, elige Guardar en Archivos y selecciona iCloud Drive o En mi iPhone/iPad. 
+Cuando lo hayas exportado, pulsa en el botón "Si, ya lo tengo" y te abrirá la web del conversor.
 Pulsa el botón de subir archivo. Se abrirá el selector de archivos de iOS, navega hasta donde guardaste el ZIP y selecciónalo. El proceso puede tardar varios minutos en chats con muchas fotos o vídeos.
 Cuando termine, pulsa Descargar HTML. El archivo se guardará automáticamente en tu carpeta de Descargas. Para abrirlo, ve a la app Archivos → Descargas, toca el archivo y elige Abrir con Safari o Abrir con Chrome.
 
